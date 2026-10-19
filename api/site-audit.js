@@ -1,11 +1,12 @@
 // Public, bounded sitemap audit. Evidence-based rules, not an LLM copywriting review.
+import { publicFetch } from '../lib/public-fetch.js';
 const ROOT="https://gettravel.asia";
 const decode=s=>String(s||"").replace(/<[^>]+>/g," ").replace(/&(?:amp|nbsp);/g," ").replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/\s+/g," ").trim();
 const tag=(html,name)=>decode((html.match(new RegExp("<"+name+"\\b[^>]*>([\\s\\S]*?)<\\/"+name+">","i"))||[])[1]);
 const attr=(s,k)=>(s.match(new RegExp("\\b"+k+"\\s*=\\s*[\"']([\\s\\S]*?)[\"']","i"))||[])[1]||"";
-async function fetchText(url){const r=await fetch(url,{redirect:"follow",signal:AbortSignal.timeout(6500),headers:{"User-Agent":"GetTravelAudit/1.0"}});return {ok:r.ok,status:r.status,url:r.url,text:(await r.text()).slice(0,250000)}}
+async function fetchText(url){return publicFetch(url)}
 function issue(type,level,field,current,why,suggestion){return {type,level,field,current,why,suggestion}}
-function audit(p){const html=p.text,title=tag(html,"title"),h1s=[...html.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)].map(x=>decode(x[1])),h2s=[...html.matchAll(/<h2\b[^>]*>([\s\S]*?)<\/h2>/gi)].map(x=>decode(x[1]));const meta=(html.match(/<meta\b[^>]*name\s*=\s*["']description["'][^>]*>/i)||[])[0]||"";const description=attr(meta,"content");const lang=(html.match(/<html\b[^>]*\blang\s*=\s*["']?([\w-]+)/i)||[])[1]||"";const text=decode(html.replace(/<(script|style|nav|footer|header)\b[^>]*>[\s\S]*?<\/\1>/gi," "));const issues=[];
+function audit(p){if(!p.ok)return {url:p.url,status:p.status,issues:[issue("technical","high","Доступность","HTTP "+p.status,"Страница не вернула успешный ответ","Проверить адрес и настройки сервера")]};const html=p.text,title=tag(html,"title"),h1s=[...html.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)].map(x=>decode(x[1])),h2s=[...html.matchAll(/<h2\b[^>]*>([\s\S]*?)<\/h2>/gi)].map(x=>decode(x[1]));const meta=(html.match(/<meta\b[^>]*(?=[^>]*name\s*=\s*["']description["'])[^>]*>/i)||[])[0]||"";const description=attr(meta,"content");const lang=(html.match(/<html\b[^>]*\blang\s*=\s*["']?([\w-]+)/i)||[])[1]||"";const text=decode(html.replace(/<(script|style|nav|footer|header)\b[^>]*>[\s\S]*?<\/\1>/gi," "));const issues=[];
 if(!title)issues.push(issue("seo","high","Title","","Нет заголовка страницы","Добавить уникальный Title с названием тура, направлением и брендом"));
 else if(title.length<28||title.length>68)issues.push(issue("seo","medium","Title",title,"Длина "+title.length+" символов; может плохо описывать предложение или обрезаться","Написать конкретный заголовок с направлением и главной выгодой (ориентир 30–65 символов)"));
 if(!description)issues.push(issue("seo","medium","Meta description","","Отсутствует описание для поисковой выдачи","Написать уникальное описание с маршрутом, преимуществом и призывом к действию"));
