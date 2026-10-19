@@ -13,6 +13,7 @@ const PLATFORMS = ["Facebook","Instagram","TikTok","WeChat","LINE","Viber"];
 export default async function handler(req,res) {
   res.setHeader("Cache-Control","no-store");
   if(req.method!=="POST") return res.status(405).json({error:"Method not allowed"});
+  if(!process.env.MARKETING_ACCESS_CODE || req.headers["x-marketing-access-code"] !== process.env.MARKETING_ACCESS_CODE) return res.status(401).json({error:"Для AI требуется код доступа GetTravel (настраивается в Vercel)."});
   if(!process.env.OPENAI_API_KEY) return res.status(503).json({error:"AI не подключён: администратор должен настроить OPENAI_API_KEY в Vercel."});
   const {tour,platform,language} = req.body || {};
   if(!Object.prototype.hasOwnProperty.call(FACTS,tour)||!PLATFORMS.includes(platform)||!LANGS.includes(language))
