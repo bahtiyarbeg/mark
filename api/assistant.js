@@ -12,9 +12,10 @@ export default async function handler(req,res){
  async function get(path){const r=await fetch(base+path,{signal:AbortSignal.timeout(14000)});if(!r.ok)throw Error("Источник не ответил");return r.json()}
  try{
   if(/сайт|seo|индекс|ошибк|доступност|website|вебмастер/.test(q)){
-   const d=await get("/api/site-health");
-   const bad=d.checks.filter(c=>c.state!=="ok");
-   return res.status(200).json({kind:"website",title:"Результат проверки gettravel.asia",answer:"Проверено "+d.checks.length+" пунктов. Успешно: "+d.summary.ok+", замечания: "+d.summary.warning+", ошибки: "+d.summary.error+". "+(bad.length?"Требуют внимания: "+bad.map(c=>c.label+" — "+c.details).join("; "):"По доступным проверкам проблем не обнаружено.")+" Внутреннюю аналитику Google и Яндекса без разрешённого подключения проверить нельзя.",checkedAt:d.checkedAt,source:"https://gettravel.asia",verified:true});
+   const d=await get("/api/site-audit");
+   const findings=d.pages.flatMap(p=>p.issues.map(i=>({title:p.url+" · "+i.field+" · "+i.why+" → "+i.suggestion,url:p.url}))).slice(0,12);
+   return res.status(200).json({kind:"website",title:"Аудит сайта GetTravel: SEO и маркетинг",answer:"Проверено страниц: "+d.pagesScanned+". Приоритетные замечания: "+d.summary.high+", средние: "+d.summary.medium+", небольшие: "+d.summary.low+". Ниже конкретные страницы, проблемы и рекомендации. Это проверка HTML и простых маркетинговых признаков, а не полноценная оценка каждого слова или всех страниц сайта.",items:findings,checkedAt:d.checkedAt,source:"https://gettravel.asia",verified:true});
+
   }
   if(/конкурент|рынок|новост|тренд|туризм|публикац/.test(q)){
    const d=await get("/api/discover");
