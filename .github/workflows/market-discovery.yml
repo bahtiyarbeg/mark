@@ -1,0 +1,24 @@
+name: GET AI Market Discovery
+on:
+  schedule:
+    - cron: '15 2 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run multilingual public market discovery
+        run: python -m app.market_discovery
+      - name: Upload timestamped report
+        uses: actions/upload-artifact@v4
+        with:
+          name: gettravel-market-report
+          path: reports/latest.json
+          retention-days: 14
