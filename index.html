@@ -82,8 +82,8 @@ const allCards=[...byId("modules").children];
 function filterModules(indices){allCards.forEach((card,i)=>{card.hidden=indices!==null&&!indices.includes(i)});}
 categories.forEach(([label,indices],i)=>{const b=document.createElement("button");b.type="button";b.className="action secondary";b.textContent=label;b.setAttribute("aria-pressed",String(i===0));b.onclick=()=>{advanced.classList.add("open");toggle.textContent="Скрыть 23 направления";filterModules(indices);categoryBar.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)))};categoryBar.append(b)});
 advanced.prepend(categoryBar);
-const toggle=document.createElement("button");toggle.type="button";toggle.className="action secondary";toggle.textContent="Все 23 AI-модуля доступны ниже";toggle.disabled=true;toggle.style.display="none";groups.marketing.insertBefore(toggle,advanced);
-const safety=pick("Контроль расходов");if(safety)groups.marketing.append(safety);
+const toggle=document.createElement("button");toggle.type="button";toggle.className="action secondary";toggle.textContent="Все 23 AI-модуля доступны ниже";toggle.disabled=true;toggle.style.display="none";groups.marketing.insertBefore(toggle,advanced);groups.marketing.prepend(advanced);
+const safety=pick("Контроль расходов");if(safety)groups.marketing.append(safety);if(newsCard)groups.marketing.append(newsCard);
 document.querySelectorAll(".quicknav button").forEach(btn=>btn.addEventListener("click",()=>{const tab=btn.dataset.tab;document.querySelectorAll(".quicknav button").forEach(b=>b.setAttribute("aria-selected",String(b===btn)));Object.entries(groups).forEach(([name,el])=>el.classList.toggle("active",name===tab));}));
 const n=document.querySelector(".notice");if(n)n.innerHTML="<strong>Статус:</strong> проверка сайта и публичных новостей подключена; поиск актуальных цен билетов и остальные интеграции пока не работают. Неподтверждённые цены не показываются.";
 const oldAudit=byId("audit");oldAudit.textContent="Быстрая техническая проверка";
