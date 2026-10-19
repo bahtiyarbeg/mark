@@ -1,5 +1,7 @@
 # GET AI Marketing
 
+The web dashboard now routes all 18 directions through `/api/orchestrator`, with manual source connections, honest integration statuses, free rule-based tools, and an optional loopback-only Ollama/FFmpeg executor. See [the user and developer guide](docs/central-backend.md) for exact capabilities and limitations. Run `npm start` for the local dashboard and `npm test` for backend tests. No npm dependencies are required.
+
 Standalone AI marketing system for GetTravel. This project is intentionally independent from the GetTravel CRM.
 
 ## MVP goals

@@ -1,0 +1,13 @@
+.quicknav{grid-template-columns:repeat(5,minmax(0,1fr))}
+#group-connections input,#group-connections select,#sharedBrief input,#sharedBrief select,#sharedBrief textarea{display:block;width:100%;margin:6px 0 15px;padding:11px;background:#09252d;color:#edf9f8;border:1px solid #50858a;border-radius:8px;font:inherit}
+#sharedBrief textarea{min-height:105px;resize:vertical}
+#connectionForm{display:grid;gap:12px;grid-template-columns:1fr 2fr 1fr;align-items:end}
+#connectionForm button{grid-column:1/-1;justify-self:start}
+.briefGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.source a,#videoResult a{color:#a2fbe9;overflow-wrap:anywhere}
+.source button{margin:6px 8px 6px 0}
+.resultBlock{border-left:2px solid #346772;padding-left:14px;margin:12px 0;overflow-wrap:anywhere}
+#detail p{white-space:pre-wrap;overflow-wrap:anywhere}
+#runHistory{display:flex;flex-wrap:wrap;gap:8px}
+#connectionActions label{display:block;width:100%}
+@media(max-width:650px){.quicknav{grid-template-columns:repeat(2,minmax(0,1fr))}#connectionForm,.briefGrid{grid-template-columns:1fr}}

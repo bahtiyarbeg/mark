@@ -1,30 +1,18 @@
-// Evidence-first command router. No API key, no invented fares.
-const site="gettravel.asia";
-const escape=(s)=>String(s||"").slice(0,700);
+import {execute} from '../lib/orchestrator.js';
 export default async function handler(req,res){
- res.setHeader("Cache-Control","no-store");
- if(req.method!=="POST")return res.status(405).json({error:"Use POST"});
- const query=escape(req.body?.message).trim();
- if(!query)return res.status(400).json({error:"Введите задачу"});
- const q=query.toLowerCase();
- const base="https://"+(req.headers.host||"");
- const headers={};
- async function get(path){const r=await fetch(base+path,{signal:AbortSignal.timeout(14000)});if(!r.ok)throw Error("Источник не ответил");return r.json()}
- try{
-  if(/сайт|seo|индекс|ошибк|доступност|website|вебмастер/.test(q)){
-   const d=await get("/api/site-audit");
-   const findings=d.pages.flatMap(p=>p.issues.map(i=>({title:p.url+" · "+i.field+" · "+i.why+" → "+i.suggestion,url:p.url}))).slice(0,12);
-   return res.status(200).json({kind:"website",title:"Аудит сайта GetTravel: SEO и маркетинг",answer:"Проверено страниц: "+d.pagesScanned+". Приоритетные замечания: "+d.summary.high+", средние: "+d.summary.medium+", небольшие: "+d.summary.low+". Ниже конкретные страницы, проблемы и рекомендации. Это проверка HTML и простых маркетинговых признаков, а не полноценная оценка каждого слова или всех страниц сайта.",items:findings,checkedAt:d.checkedAt,source:"https://gettravel.asia",verified:true});
-
-  }
-  if(/конкурент|рынок|новост|тренд|туризм|публикац/.test(q)){
-   const d=await get("/api/discover");
-   const items=d.items.slice(0,8);
-   return res.status(200).json({kind:"market",title:"Публикации туристического рынка",answer:items.length?"Найдено "+d.items.length+" публичных публикаций. Ниже первые материалы; это не полный список конкурентов.":"Свежие публикации получить не удалось. Не буду подменять их предположениями.",items:items.map(x=>({title:x.title,url:x.link,source:x.source,date:x.date})),checkedAt:d.updated,verified:items.length>0});
-  }
-  if(/авиа|самол|перел|рейс|автобус|поезд|билет|театр|парк|аттракцион|vinwonders|стоимост|цен[ауы]/.test(q)){
-   return res.status(200).json({kind:"unavailable",title:"Для этого запроса пока нет проверенного источника",answer:"Я понял задачу: «"+query+"». Но подключённого поставщика актуальных тарифов и расписаний пока нет. Поэтому я не могу достоверно показать самую низкую цену, компании и свободные места. Не буду отправлять вас в поисковик вместо результата или придумывать цены.",verified:false,needs:"Подключение тарифного источника/партнёрского API для самолётов, автобусов, поездов и входных билетов."});
-  }
-  return res.status(200).json({kind:"unavailable",title:"Задача принята, но автоматическое выполнение пока не настроено",answer:"Запрос: «"+query+"». Для достоверного выполнения нужен соответствующий инструмент или источник. Сейчас автоматически доступны проверка сайта и поиск публичных новостей туристического рынка. Остальные возможности находятся в разработке.",verified:false});
- }catch(e){return res.status(502).json({error:"Не удалось получить проверенные данные из внешнего источника. Попробуйте позже."})}
+  res.setHeader('Cache-Control','no-store');
+  if(req.method!=='POST')return res.status(405).json({error:'POST only'});
+  const query=String(req.body?.message||'').trim().slice(0,700);
+  if(!query)return res.status(400).json({error:'Введите задачу'});
+  try {
+    if(/сайт|seo|индекс|ошибк|доступност|website|вебмастер/i.test(query)){
+      const {output:d}=await execute('website.audit');
+      return res.json({kind:'website',title:'Аудит сайта GetTravel',answer:`Проверено страниц: ${d.pagesScanned}. Важных замечаний: ${d.summary.high}. ${d.limitations}`,checkedAt:d.checkedAt,verified:d.pages.some(p=>p.status>=200&&p.status<300),items:d.pages.flatMap(p=>p.issues.map(i=>({url:p.url,title:i.field+': '+i.why+' → '+(i.replacement||i.suggestion)}))).slice(0,20)});
+    }
+    if(/конкурент|рынок|новост|тренд|туризм|публикац/i.test(query)){
+      const {output:d}=await execute('news');
+      return res.json({kind:'market',title:'Публичные новости туристического рынка',answer:d.notice+' Для проверки конкретного конкурента добавьте его ссылку в «Подключениях».',checkedAt:d.updated,verified:d.items.length>0,items:d.items.slice(0,8).map(x=>({...x,url:x.link}))});
+    }
+    return res.json({kind:'unavailable',title:'Выберите действие в панели',answer:'Для контента, видео, перевода и аналитики откройте «Все 18 AI-модулей» и заполните общие данные. Telegram, TikTok, Instagram и конкуренты добавляются в «Подключениях». Актуальные тарифы и наличие билетов требуют поставщика данных, который пока не подключён.',verified:false});
+  }catch{return res.status(502).json({error:'Источник недоступен. Попробуйте позже.'});}
 }
