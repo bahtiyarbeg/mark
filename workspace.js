@@ -23,6 +23,23 @@
     save();if($('runHistory'))renderHistory();return data;
   }
   const nav=document.querySelector('.quicknav');
+  // Keep the assistant visible while switching work areas.
+  document.querySelector('main').insertBefore($('assistantPanel'),document.querySelector('.notice'));
+  document.querySelector('.intro h2').textContent='Ваш маркетинг. В одном месте.';
+  document.querySelector('.intro p').textContent='От идеи до готового материала — с проверенными фактами и понятными результатами.';
+  $('assistantPanel').querySelector('h2').textContent='С чего начнём сегодня?';
+  $('assistantPanel').querySelector('p').textContent='Помощник GETTRAVEL · Проверка сайта и открытые новости по запросу. Работает по правилам, без подключённой AI-модели.';
+  const shortcuts=el('div',undefined,'assistant-shortcuts');
+  for(const [label,value] of [['Проверить сайт','Проверь сайт gettravel.asia'],['Новости туризма','Покажи новости туристического рынка']]) shortcuts.append(button(label,()=>{$('assistantInput').value=value;$('assistantInput').focus();}));
+  $('assistantForm').before(shortcuts);
+  const newsPanel=$('refresh').closest('.panel');newsPanel.id='publications';document.querySelector('main').append(newsPanel);
+  const assistantTab=nav.querySelector('[data-tab="assistant"]');assistantTab.remove();
+  nav.prepend(nav.querySelector('[data-tab="marketing"]'));
+  nav.querySelector('[data-tab="marketing"]').textContent='Все модули · 18';
+  nav.insertBefore(nav.querySelector('[data-tab="website"]'),nav.querySelector('[data-tab="tickets"]'));
+  nav.querySelector('[data-tab="marketing"]').click();
+  $('groundSearch').textContent='Открыть поиск перевозчиков';$('ticketSearch').textContent='Найти источники цен';
+  $('flightPlan').textContent='Варианты аэропортов';
   const connectTab=button('Подключения',()=>{
     document.querySelectorAll('.workgroup').forEach(g=>g.classList.remove('active'));
     document.querySelectorAll('.quicknav button').forEach(b=>b.setAttribute('aria-selected',String(b===connectTab)));
@@ -89,6 +106,8 @@
   function renderRun(data,parent) {
     parent.replaceChildren();parent.append(el('p',(labels[data.status]||data.status)+' · '+(data.provider==='local_ai'?'Локальная модель':'Правила / открытые данные')+' · Платный API не вызывался','pill'));
     renderValue(parent,data.output);
+    const copyText=data.output?.post||data.output?.translation||data.output?.reply;
+    if(copyText)parent.append(button('Копировать текст',async e=>{try{await navigator.clipboard.writeText(copyText);e.target.textContent='Скопировано ✓';}catch{e.target.textContent='Выделите текст и скопируйте вручную';}}));
     if(data.output?.file)parent.append(button('Скачать '+data.output.filename,()=>download(data.output.filename,data.output.file,data.output.mime)));
     parent.append(button('Скачать результат',()=>download('gettravel-'+data.action+'.json',JSON.stringify(data,null,2))));
     if(data.action==='video') parent.append(el('p','Для MP4: запустите локальный сервер, откройте его панель и выберите фотографии ниже. На сайте Vercel сборка MP4 недоступна.'));
@@ -101,6 +120,7 @@
   let catalog=[];
   [...$('modules').children].forEach((card,i)=>{
     card.onclick=()=>{
+      [...$('modules').children].forEach(c=>{c.classList.toggle('selected',c===card);c.setAttribute('aria-pressed',String(c===card));});
       const m=catalog.find(m=>m.id===ids[i]);const detail=$('detail');detail.replaceChildren(el('h2',m?.name||card.querySelector('strong').textContent),el('p',m?.description||'Состояние backend пока не получено.'));
       const b=button('Выполнить',async()=>{b.disabled=true;out.textContent='Выполняется…';try{renderRun(await run(ids[i],input()),out);renderHistory();}catch(err){out.textContent=err.message;}finally{b.disabled=false;}});const out=el('div');out.setAttribute('aria-live','polite');detail.append(el('p','Используются общие данные выше и ссылки из раздела «Подключения». Все результаты — для вашей проверки.'),b,out);detail.scrollIntoView({behavior:'smooth',block:'start'});
     };
@@ -112,13 +132,45 @@
       const names={cloudAI:'Платный AI (отдельный API)',localAI:'Локальный AI',video:'Сборка видео',socialAccounts:'Аккаунты соцсетей',storage:'Хранение'};
       for(const [key,value] of Object.entries(data.integrations)){status.append(el('h3',names[key]),el('p',(labels[value.status]||value.status)+' · '+value.note));}
       [...$('modules').children].forEach((card,i)=>{const m=catalog.find(m=>m.id===ids[i]);card.querySelector('.tag').textContent=m?(labels[m.status]||m.status):'Нет обработчика';if(m)card.querySelector('small').textContent=m.description;});
-      document.querySelector('.notice').textContent='18 модулей связаны с единым backend. Бесплатные операции и ограничения указаны в каждом результате. Добавьте ссылки в «Подключениях». Публикация и платные действия автоматически не выполняются.';
+      document.querySelector('.notice').textContent='Сервер доступен · Бесплатные инструменты работают. AI: '+(data.integrations.localAI.status==='available'?'локальная модель подключена.':'не подключён.')+' Цены мест проверяются по публичным страницам. Наличие билетов и автопубликация не подключены.';
       if(data.integrations.video.status==='available')enableVideo();
-    }catch(err){$('integrationStatus').textContent=err.message;[...$('modules').children].forEach(card=>card.querySelector('.tag').textContent='Backend недоступен');}
+    }catch(err){$('integrationStatus').textContent=err.message;document.querySelector('.notice').textContent='Сервер недоступен. Запуск модулей требует работающего backend. Сохранённые данные остаются в этом браузере.';[...$('modules').children].forEach(card=>card.querySelector('.tag').textContent='Backend недоступен');}
   }
   function enableVideo(){
     const p=el('section',undefined,'panel');p.innerHTML='<h2>Локальная сборка MP4</h2><p>Выберите 1–8 своих фотографий JPEG/PNG. Получится вертикальное слайд-шоу без звука; субтитры скачиваются отдельно в модуле «Видео».</p><label>Фотографии<input id="videoPhotos" type="file" accept="image/jpeg,image/png" multiple></label><div id="videoResult" role="status"></div>';
     const b=button('Собрать MP4',async()=>{b.disabled=true;const out=$('videoResult');out.textContent='Собираем видео локально…';try{const files=[...$('videoPhotos').files];if(!files.length||files.length>8||files.some(f=>f.size>5000000))throw Error('Нужно 1–8 фотографий, до 5 МБ каждая.');const images=await Promise.all(files.map(file=>new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file);})));const r=await fetch('/local/video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({images})});const d=await r.json();if(!r.ok)throw Error(d.error);out.replaceChildren();const a=el('a','Скачать MP4');a.href=d.url;a.download='gettravel-video.mp4';out.append(a);}catch(err){out.textContent=err.message;}finally{b.disabled=false;}});p.append(b);$('group-marketing').append(p);
   }
   refreshCapabilities();
+  shortcuts.append(button('Подготовить пост',()=>{$('assistantInput').value='Подготовь черновик поста';document.querySelector('[data-tab="marketing"]').click();$('sharedBrief').scrollIntoView({behavior:'smooth'});$('briefTitle').focus({preventScroll:true});}));
+  $('assistantForm').onsubmit=async e=>{
+    e.preventDefault();const message=$('assistantInput').value.trim(),b=$('assistantSend'),out=$('assistantResult');if(!message)return;
+    b.disabled=true;out.textContent='Выполняем задачу…';
+    try{
+      const r=await fetch('/api/assistant',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message,input:input()})});const d=await r.json();if(!r.ok)throw Error(d.error||'Не удалось выполнить задачу');
+      out.replaceChildren(el('h3',d.title),el('p',d.answer));
+      if(d.result){const result=el('div');renderRun(d.result,result);out.append(result);state.history.unshift(d.result);state.history=state.history.slice(0,30);save();renderHistory();}
+      else {out.append(el('p',(d.verified?'Получено из публичного источника':'Подтверждённых данных нет')+(d.checkedAt?' · '+new Date(d.checkedAt).toLocaleString('ru-RU'):''),'quiet'));for(const item of d.items||[]){if(!/^https?:\/\//.test(item.url||''))continue;const row=el('div',undefined,'source'),a=el('a',item.title);a.href=item.url;a.target='_blank';a.rel='noopener noreferrer';row.append(a,el('small',[item.source,item.date].filter(Boolean).join(' · ')));out.append(row);}}
+    }catch(err){out.textContent=err.message;}finally{b.disabled=false;}
+  };
+  // Show evidence and editable copy separately; never label missing text as a fix.
+  const auditButtons=$('audit').parentElement.querySelectorAll('button');
+  auditButtons[1].onclick=async()=>{
+    const out=$('auditResults'),status=$('auditStatus');auditButtons.forEach(b=>b.disabled=true);out.replaceChildren();status.textContent='Проверяем публичные страницы…';
+    try{
+      const data=await run('website.audit');const d=data.output;
+      status.textContent=`Проверено ${d.pagesScanned} страниц · Важных замечаний: ${d.summary.high} · ${new Date(d.checkedAt).toLocaleString('ru-RU')}`;
+      for(const page of d.pages){
+        const section=el('section',undefined,'source');const link=el('a',page.title||page.url);link.href=page.url;link.target='_blank';link.rel='noopener noreferrer';section.append(link);
+        if(!page.issues.length)section.append(el('p','По правилам этой проверки замечаний нет. Это не полный аудит.'));
+        for(const issue of page.issues){
+          const box=el('article',undefined,'audit-issue');box.append(el('h3',issue.field+' · '+issue.why));
+          const comparison=el('div',undefined,'audit-comparison');
+          for(const [label,value] of [['ОРИГИНАЛ',issue.current||'Не найдено в исходном HTML'],[issue.replacement?'ГОТОВЫЙ ТЕКСТ · ПРОВЕРЬТЕ ПЕРЕД ПУБЛИКАЦИЕЙ':'НУЖНА ПРОВЕРКА',issue.replacement||issue.reason||issue.suggestion]]){const part=el('div');part.append(el('small',label),el('p',value));comparison.append(part);}
+          box.append(comparison);
+          if(issue.replacement)box.append(button('Копировать исправление',async e=>{const b=e.currentTarget;try{await navigator.clipboard.writeText(issue.replacement);b.textContent='Скопировано ✓';}catch{b.textContent='Копирование недоступно — выделите текст выше';}}));
+          section.append(box);
+        }out.append(section);
+      }out.append(el('p',d.limitations,'quiet'));
+    }catch(err){status.textContent='Проверка не выполнена: '+err.message;}finally{auditButtons.forEach(b=>b.disabled=false);}
+  };
 })();

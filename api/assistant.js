@@ -5,6 +5,15 @@ export default async function handler(req,res){
   const query=String(req.body?.message||'').trim().slice(0,700);
   if(!query)return res.status(400).json({error:'Введите задачу'});
   try {
+    // These are explicit free tools, not an LLM or a simulated AI response.
+    const input=req.body?.input&&typeof req.body.input==='object'?req.body.input:{};
+    const action=/субтитр|сценари|ролик|видео/i.test(query)?'video':/черновик|пост|контент|напиши/i.test(query)?'content':/конверси|аналитик|рассчитай/i.test(query)?'analytics':null;
+    if(action){
+      try{
+        const result=await execute(action,{...input,provider:'template'});
+        return res.json({kind:'tool',title:action==='content'?'Черновик по вашим фактам':action==='video'?'Сценарий и субтитры':'Расчёт по вашим данным',answer:'Бесплатный инструмент по правилам. Это не AI-генерация.',verified:false,result});
+      }catch(e){return res.status(400).json({error:e.message+' Данные можно заполнить в разделе «Все модули».'});}
+    }
     if(/сайт|seo|индекс|ошибк|доступност|website|вебмастер/i.test(query)){
       const {output:d}=await execute('website.audit');
       return res.json({kind:'website',title:'Аудит сайта GetTravel',answer:`Проверено страниц: ${d.pagesScanned}. Важных замечаний: ${d.summary.high}. ${d.limitations}`,checkedAt:d.checkedAt,verified:d.pages.some(p=>p.status>=200&&p.status<300),items:d.pages.flatMap(p=>p.issues.map(i=>({url:p.url,title:i.field+': '+i.why+' → '+(i.replacement||i.suggestion)}))).slice(0,20)});

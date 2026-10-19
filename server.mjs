@@ -8,7 +8,7 @@ const root=path.dirname(fileURLToPath(import.meta.url));
 const port=Number(process.env.PORT||3000);
 const host=`127.0.0.1:${port}`;
 let rendering=false;
-const apis=['orchestrator','assistant','site-audit','site-health','discover','generate'];
+const apis=['orchestrator','assistant','site-audit','site-health','discover','generate','places'];
 async function readBody(req,limit){let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>limit)throw Error('Запрос слишком большой');chunks.push(chunk);}return JSON.parse(Buffer.concat(chunks).toString()||'{}');}
 http.createServer(async(req,res)=>{
   res.status=n=>{res.statusCode=n;return res;};res.json=data=>{res.setHeader('Content-Type','application/json; charset=utf-8');res.end(JSON.stringify(data));};
@@ -27,7 +27,7 @@ http.createServer(async(req,res)=>{
       const handler=(await import(`./api/${name}.js`)).default;return await handler(req,res);
     }
     const file=url.pathname==='/'?'index.html':url.pathname.slice(1);
-    if(!['index.html','workspace.js','workspace.css'].includes(file)&&!/^output\/[0-9a-f-]+\.mp4$/.test(file))return res.status(404).json({error:'Not found'});
+    if(!['index.html','workspace.js','workspace.css','places.js'].includes(file)&&!/^output\/[0-9a-f-]+\.mp4$/.test(file))return res.status(404).json({error:'Not found'});
     const body=await readFile(path.join(root,file));const ext=path.extname(file);
     res.setHeader('Content-Type',({'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css','.mp4':'video/mp4'})[ext]);
     res.end(body);
