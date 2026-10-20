@@ -41,7 +41,7 @@
   async function showPrices(place){
     const version=++priceVersion,out=$('placePrices');out.hidden=false;out.replaceChildren(el('h2',place.name),el('p','Ищем сайт места и проверяем страницы с ценами…'));out.scrollIntoView({behavior:'smooth',block:'start'});
     try{
-      const data=await api({action:'prices',id:place.id});if(version!==priceVersion)return;
+      const data=await api({action:'prices',id:place.id,lat:place.lat,lon:place.lon});if(version!==priceVersion)return;
       out.replaceChildren(el('h2',place.name),el('p','Проверено '+new Date(data.checkedAt).toLocaleString('ru-RU'),'quiet'));
       if(data.prices.length){out.append(el('h3','Найденные опубликованные цены'));for(const price of data.prices){
         const row=el('article',undefined,'price-row'),cells=price.text.split(' | '),headers=(price.context||'').split(' / ').at(-1).split(' | ');

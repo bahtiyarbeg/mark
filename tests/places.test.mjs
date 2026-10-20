@@ -16,6 +16,46 @@ test('do not fabricate missing prices or accept arbitrary fetch URLs',async()=>{
   await assert.rejects(prices('https://127.0.0.1'),/Некорректное/);
   await assert.rejects(places({lat:12,lon:109,radius:100000}),/Выберите/);
 });
+test('cold price lookup recovers the exact OSM identity and ignores client-supplied venue details',async()=>{
+  const original=global.fetch,calls=[];
+  global.fetch=async(url,options)=>{
+    calls.push({url,options});
+    const data=url.startsWith('https://photon.komoot.io/reverse?')?{features:[
+      {properties:{osm_type:'N',osm_id:710000001,name:'Different type',osm_key:'tourism',osm_value:'museum'},geometry:{coordinates:[109.18,12.23]}},
+      {properties:{osm_type:'W',osm_id:710000001,name:'Verified museum',osm_key:'tourism',osm_value:'museum'},geometry:{coordinates:[109.19,12.24]}}
+    ]}:{elements:[]};
+    return {ok:true,text:async()=>JSON.stringify(data)};
+  };
+  try{
+    const result=await prices('way/710000001',{lat:12.25,lon:109.2,name:'Client invention',website:'https://127.0.0.1/private',price:'1 VND'});
+    assert.equal(result.place.id,'way/710000001');
+    assert.equal(result.place.name,'Verified museum');
+    assert.equal(result.place.lat,12.24);
+    assert.equal(result.place.lon,109.19);
+    assert.equal(result.place.website,'');
+    assert.equal(result.status,'not_found');
+    assert.deepEqual(result.prices,[]);
+    assert.deepEqual(result.sources,[]);
+    assert.match(calls[0].url,/lat=12\.25&lon=109\.2&radius=1/);
+    assert.equal(calls.length,2); // The second request enriches missing website tags.
+    assert.match(decodeURIComponent(calls[1].options.body),/way\(710000001\)/);
+  }finally{global.fetch=original;}
+});
+test('cold price lookup never substitutes a nearby venue when reverse lookup has no exact match',async()=>{
+  const original=global.fetch,calls=[];
+  global.fetch=async(url,options)=>{
+    calls.push({url,options});
+    const data=url.startsWith('https://photon.komoot.io/reverse?')?{features:[
+      {properties:{osm_type:'N',osm_id:710000002,name:'Nearby venue',osm_key:'tourism',osm_value:'museum'},geometry:{coordinates:[109.19,12.24]}}
+    ]}:{elements:[]};
+    return {ok:true,text:async()=>JSON.stringify(data)};
+  };
+  try{
+    await assert.rejects(prices('way/710000002',{lat:12.24,lon:109.19}),/Место больше не доступно/);
+    assert.equal(calls.length,2);
+    assert.match(decodeURIComponent(calls[1].options.body),/way\(710000002\)/);
+  }finally{global.fetch=original;}
+});
 test('catalog uses real names, excludes abandoned places, does not treat OSM charge as verified fare',()=>{
   const p=placeFromOSM({type:'node',id:12,lat:12,lon:109,tags:{name:'Place',tourism:'museum',charge:'30 VND'}});assert.equal(p.charge,'30 VND');assert.equal(p.prices,undefined);assert.match(p.source,/node\/12$/);
   assert.equal(placeFromOSM({tags:{name:'Closed',abandoned:'yes'}}),null);

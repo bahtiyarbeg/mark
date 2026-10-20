@@ -5,7 +5,7 @@ export default async function handler(req,res){
   try{
     if(req.headers.origin&&new URL(req.headers.origin).host!==req.headers.host)return res.status(403).json({error:'Другой источник запроса запрещён'});
     const body=req.body;if(!body||JSON.stringify(body).length>2000)return res.status(400).json({error:'Некорректный запрос'});
-    const result=body.action==='cities'?await cities(body.city):body.action==='places'?await places(body):body.action==='prices'?await prices(body.id):null;
+    const result=body.action==='cities'?await cities(body.city):body.action==='places'?await places(body):body.action==='prices'?await prices(body.id,{lat:body.lat,lon:body.lon}):null;
     if(!result)return res.status(400).json({error:'Неизвестное действие'});return res.json(result);
   }catch(e){return res.status(502).json({error:e.message||'Источник недоступен. Попробуйте позже.'});}
 }
